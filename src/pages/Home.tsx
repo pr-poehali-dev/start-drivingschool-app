@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 
-const HERO_IMG = 'https://cdn.poehali.dev/projects/71838770-5b95-4cb6-ba21-f3390b81b031/files/dd22d337-72af-48d0-8585-065854ea6d0e.jpg';
 const YARD_IMG = 'https://cdn.poehali.dev/projects/71838770-5b95-4cb6-ba21-f3390b81b031/files/9522fa27-eb6c-4fee-902f-833e77257ebc.jpg';
 
 const advantages = [
@@ -59,9 +58,9 @@ const tariffs = [
 ];
 
 const instructors = [
-  { name: 'Александр Петров', exp: '12 лет опыта', cat: 'B, C', img: 'https://cdn.poehali.dev/projects/71838770-5b95-4cb6-ba21-f3390b81b031/files/5020763a-f979-4765-a47a-df9aebe4372b.jpg' },
-  { name: 'Михаил Сидоров', exp: '9 лет опыта', cat: 'B', img: null },
-  { name: 'Ольга Иванова', exp: '8 лет опыта', cat: 'A, B', img: null },
+  { name: 'Александр Петров', exp: '12 лет опыта', cat: 'B, C' },
+  { name: 'Михаил Сидоров', exp: '9 лет опыта', cat: 'B' },
+  { name: 'Ольга Иванова', exp: '8 лет опыта', cat: 'A, B' },
 ];
 
 export default function Home() {
@@ -69,11 +68,8 @@ export default function Home() {
     <div className="min-h-screen">
       {/* HERO */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${HERO_IMG})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-gray-900/70 to-transparent" />
+        <div className="absolute inset-0 bg-gray-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-burgundy/30 via-gray-950 to-gray-950" />
         <div className="relative container mx-auto px-4 py-20">
           <div className="max-w-xl animate-fade-in">
             <div className="inline-flex items-center gap-2 bg-burgundy/20 border border-burgundy/40 text-white text-xs px-3 py-1.5 rounded-full mb-6 backdrop-blur-sm">
@@ -242,13 +238,8 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
             {instructors.map((ins, i) => (
               <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover-lift text-center">
-                <div className="h-48 bg-gray-200 overflow-hidden">
-                  {ins.img
-                    ? <img src={ins.img} alt={ins.name} className="w-full h-full object-cover object-top" />
-                    : <div className="w-full h-full flex items-center justify-center bg-burgundy/10">
-                        <Icon name="UserCircle" size={64} className="text-burgundy/40" />
-                      </div>
-                  }
+                <div className="h-24 bg-burgundy/10 flex items-center justify-center">
+                  <Icon name="UserCircle" size={56} className="text-burgundy/40" />
                 </div>
                 <div className="p-4">
                   <h3 className="font-montserrat font-semibold text-gray-900 text-sm">{ins.name}</h3>

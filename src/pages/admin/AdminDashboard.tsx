@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
-import { getGroups, getApplications, updateApplicationStatus, updateDocument, getUsers, createUser, updateUser, getGroupsList, type UserRecord } from '@/lib/api';
+import { getGroups, getApplications, updateApplicationStatus, updateDocument, getUsers, createUser, updateUser, archiveUser, getGroupsList, type UserRecord } from '@/lib/api';
 
 const TABS = [
   { id: 'overview', label: 'Обзор', icon: 'LayoutDashboard' },
@@ -52,6 +52,10 @@ export default function AdminDashboard() {
   const [editUser, setEditUser] = useState<UserRecord | null>(null);
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', password: '' });
   const [editLoading, setEditLoading] = useState(false);
+
+  // Delete user
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('start_user');
@@ -116,6 +120,18 @@ export default function AdminDashboard() {
       setEditUser(null);
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!confirmDeleteId) return;
+    setDeleteLoading(true);
+    try {
+      await archiveUser(confirmDeleteId);
+      setUsers(prev => prev.filter(u => u.id !== confirmDeleteId));
+      setConfirmDeleteId(null);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -251,11 +267,18 @@ export default function AdminDashboard() {
                         <td className="px-5 py-3 text-gray-500 text-xs">{u.group_name || '—'}</td>
                         <td className="px-5 py-3 text-gray-400 text-xs">{u.created_at}</td>
                         <td className="px-5 py-3">
-                          <button onClick={() => openEdit(u)}
-                            className="text-xs text-gray-400 hover:text-burgundy transition-colors flex items-center gap-1">
-                            <Icon name="Pencil" size={13} />
-                            Изменить
-                          </button>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => openEdit(u)}
+                              className="text-xs text-gray-400 hover:text-burgundy transition-colors flex items-center gap-1">
+                              <Icon name="Pencil" size={13} />
+                              Изменить
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(u.id)}
+                              className="text-xs text-gray-300 hover:text-red-500 transition-colors flex items-center gap-1">
+                              <Icon name="Trash2" size={13} />
+                              Удалить
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -263,6 +286,30 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {/* Модалка подтверждения удаления */}
+            {confirmDeleteId && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 w-full max-w-sm shadow-2xl text-center">
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Icon name="Trash2" size={22} className="text-red-500" />
+                  </div>
+                  <h3 className="font-montserrat font-bold text-gray-900 mb-2">Удалить пользователя?</h3>
+                  <p className="text-sm text-gray-500 mb-5">Пользователь потеряет доступ к системе. Данные сохранятся.</p>
+                  <div className="flex gap-3 justify-center">
+                    <button onClick={handleDeleteUser} disabled={deleteLoading}
+                      className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-all disabled:opacity-60">
+                      {deleteLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Trash2" size={14} />}
+                      Удалить
+                    </button>
+                    <button onClick={() => setConfirmDeleteId(null)}
+                      className="text-sm text-gray-500 px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all">
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Модалка редактирования */}
             {editUser && (

@@ -131,6 +131,12 @@ export const updateUser = (data: {
     body: JSON.stringify(data),
   });
 
+export const archiveUser = (id: number) =>
+  req(`${URLS.adminApi}?resource=users`, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'archive', id }),
+  });
+
 export const getGroupsList = () =>
   req<{ id: number; name: string; category: string }[]>(
     `${URLS.adminApi}?resource=groups-list`

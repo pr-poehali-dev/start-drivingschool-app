@@ -1,8 +1,6 @@
 import { Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 
-const INSTR_IMG = 'https://cdn.poehali.dev/projects/71838770-5b95-4cb6-ba21-f3390b81b031/files/5020763a-f979-4765-a47a-df9aebe4372b.jpg';
-
 const instructors = [
   {
     id: 1,
@@ -11,7 +9,6 @@ const instructors = [
     categories: ['B', 'C'],
     about: 'Специализируется на работе с новичками и тревожными учениками. Спокойный, внимательный, умеет объяснять просто.',
     traits: ['Терпеливый', 'Опытный', 'Пунктуальный'],
-    img: INSTR_IMG,
     rating: 4.9,
     students: 320,
   },
@@ -22,7 +19,6 @@ const instructors = [
     categories: ['B'],
     about: 'Хорошо готовит к сдаче экзамена в ГИБДД. Знает все маршруты и типичные ошибки. Работает на механике и автомате.',
     traits: ['Строгий', 'Результативный', 'Чёткий'],
-    img: null,
     rating: 4.8,
     students: 210,
   },
@@ -33,7 +29,6 @@ const instructors = [
     categories: ['A', 'B'],
     about: 'Единственный инструктор по категории А в нашей школе. Мотоциклист со стажем, умеет передать любовь к дороге.',
     traits: ['Энергичная', 'Внимательная', 'Мотивирующая'],
-    img: null,
     rating: 4.9,
     students: 175,
   },
@@ -44,7 +39,6 @@ const instructors = [
     categories: ['B', 'D'],
     about: 'Ветеран школы, работает с нами с момента основания. Огромный опыт, знает психологию любого ученика.',
     traits: ['Мудрый', 'Надёжный', 'Справедливый'],
-    img: null,
     rating: 5.0,
     students: 480,
   },
@@ -66,15 +60,8 @@ export default function Instructors() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {instructors.map((ins) => (
             <div key={ins.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover-lift flex flex-col sm:flex-row">
-              <div className="sm:w-44 bg-gray-100 shrink-0">
-                {ins.img
-                  ? <img src={ins.img} alt={ins.name} className="w-full h-full object-cover object-top" />
-                  : (
-                    <div className="w-full h-44 sm:h-full flex items-center justify-center bg-gray-100">
-                      <Icon name="UserCircle" size={64} className="text-gray-300" />
-                    </div>
-                  )
-                }
+              <div className="sm:w-36 bg-burgundy/10 shrink-0 flex items-center justify-center py-6 sm:py-0">
+                <Icon name="UserCircle" size={64} className="text-burgundy/40" />
               </div>
               <div className="p-5 flex flex-col justify-between">
                 <div>

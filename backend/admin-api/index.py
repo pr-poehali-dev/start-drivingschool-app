@@ -182,6 +182,18 @@ def handler(event: dict, context) -> dict:
 
             if method == 'POST':
                 body = json.loads(event.get('body') or '{}')
+
+                # Удаление (мягкое — блокируем вход)
+                if body.get('action') == 'archive':
+                    user_id = body.get('id')
+                    cur.execute(
+                        f"UPDATE \"{SCHEMA}\".users SET login = CONCAT('_del_', id::text), password_hash = '' WHERE id = %s",
+                        (user_id,)
+                    )
+                    conn.commit()
+                    return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+                # Создание нового пользователя
                 login = body.get('login', '').strip()
                 password = body.get('password', '').strip()
                 name = body.get('name', '').strip()
