@@ -7,6 +7,7 @@ export default {
 		"./components/**/*.{ts,tsx}",
 		"./app/**/*.{ts,tsx}",
 		"./src/**/*.{ts,tsx}",
+			"./1779657004276642948.html"
 	],
 	prefix: "",
 	theme: {
@@ -88,8 +89,14 @@ export default {
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fadeIn 0.6s ease-out forwards',
+				'slide-up': 'slideUp 0.6s ease-out forwards',
+			},
+			fontFamily: {
+				montserrat: ['Montserrat', 'sans-serif'],
+				golos: ['Golos Text', 'sans-serif'],
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
