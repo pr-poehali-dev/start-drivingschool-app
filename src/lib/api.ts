@@ -105,6 +105,37 @@ export const postJournalEntry = (data: { student_id: number; instructor_id: numb
     body: JSON.stringify(data),
   });
 
+// ADMIN: USERS
+export type UserRecord = {
+  id: number; login: string; name: string; phone: string;
+  email: string; account_type: string; created_at: string; group_name: string;
+};
+
+export const getUsers = () =>
+  req<UserRecord[]>(`${URLS.adminApi}?resource=users`);
+
+export const createUser = (data: {
+  login: string; password: string; name: string;
+  phone: string; email: string; account_type: string; group_id?: number | null;
+}) =>
+  req<{ id: number } | { error: string }>(`${URLS.adminApi}?resource=users`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+export const updateUser = (data: {
+  id: number; name: string; phone: string; email: string; password?: string;
+}) =>
+  req(`${URLS.adminApi}?resource=users`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+export const getGroupsList = () =>
+  req<{ id: number; name: string; category: string }[]>(
+    `${URLS.adminApi}?resource=groups-list`
+  );
+
 // INSTRUCTOR: SCHEDULE
 export const getInstructorSchedule = (instructorId: number) =>
   req<{ id: number; date: string; time: string; status: string; student: string | null }[]>(

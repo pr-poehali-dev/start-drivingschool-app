@@ -159,6 +159,92 @@ def handler(event: dict, context) -> dict:
                 conn.commit()
                 return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'id': new_id})}
 
+        # ---- USERS ----
+        if resource == 'users':
+            if method == 'GET':
+                cur.execute(f'''
+                    SELECT u.id, u.login, u.name, u.phone, u.email, u.account_type, u.created_at,
+                           g.name as group_name
+                    FROM "{SCHEMA}".users u
+                    LEFT JOIN "{SCHEMA}".group_students gs ON u.id = gs.student_id
+                    LEFT JOIN "{SCHEMA}".groups g ON gs.group_id = g.id
+                    ORDER BY u.account_type, u.name
+                ''')
+                rows = cur.fetchall()
+                result = [
+                    {'id': r[0], 'login': r[1], 'name': r[2], 'phone': r[3] or '',
+                     'email': r[4] or '', 'account_type': r[5],
+                     'created_at': r[6].strftime('%d.%m.%Y') if r[6] else '',
+                     'group_name': r[7] or ''}
+                    for r in rows
+                ]
+                return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, ensure_ascii=False)}
+
+            if method == 'POST':
+                body = json.loads(event.get('body') or '{}')
+                login = body.get('login', '').strip()
+                password = body.get('password', '').strip()
+                name = body.get('name', '').strip()
+                account_type = body.get('account_type', 'student')
+                phone = body.get('phone', '')
+                email = body.get('email', '')
+                group_id = body.get('group_id')
+
+                if not login or not password or not name:
+                    return {'statusCode': 400, 'headers': headers, 'body': json.dumps({'error': 'Заполните все обязательные поля'})}
+
+                cur.execute(f'SELECT id FROM "{SCHEMA}".users WHERE login = %s', (login,))
+                if cur.fetchone():
+                    return {'statusCode': 409, 'headers': headers, 'body': json.dumps({'error': 'Такой логин уже существует'})}
+
+                cur.execute(
+                    f'INSERT INTO "{SCHEMA}".users (login, password_hash, name, phone, email, account_type) VALUES (%s,%s,%s,%s,%s,%s) RETURNING id',
+                    (login, password, name, phone, email, account_type)
+                )
+                new_id = cur.fetchone()[0]
+
+                if account_type == 'student':
+                    cur.execute(
+                        f'INSERT INTO "{SCHEMA}".student_documents (student_id) VALUES (%s)',
+                        (new_id,)
+                    )
+                    if group_id:
+                        cur.execute(
+                            f'INSERT INTO "{SCHEMA}".group_students (group_id, student_id) VALUES (%s, %s)',
+                            (group_id, new_id)
+                        )
+
+                conn.commit()
+                return {'statusCode': 201, 'headers': headers, 'body': json.dumps({'id': new_id})}
+
+            if method == 'PUT':
+                body = json.loads(event.get('body') or '{}')
+                user_id = body.get('id')
+                name = body.get('name')
+                phone = body.get('phone', '')
+                email = body.get('email', '')
+                new_password = body.get('password', '').strip()
+
+                if new_password:
+                    cur.execute(
+                        f'UPDATE "{SCHEMA}".users SET name=%s, phone=%s, email=%s, password_hash=%s WHERE id=%s',
+                        (name, phone, email, new_password, user_id)
+                    )
+                else:
+                    cur.execute(
+                        f'UPDATE "{SCHEMA}".users SET name=%s, phone=%s, email=%s WHERE id=%s',
+                        (name, phone, email, user_id)
+                    )
+                conn.commit()
+                return {'statusCode': 200, 'headers': headers, 'body': json.dumps({'ok': True})}
+
+        # ---- GROUPS LIST (for selects) ----
+        if resource == 'groups-list':
+            cur.execute(f'SELECT id, name, category FROM "{SCHEMA}".groups ORDER BY id')
+            rows = cur.fetchall()
+            result = [{'id': r[0], 'name': r[1], 'category': r[2]} for r in rows]
+            return {'statusCode': 200, 'headers': headers, 'body': json.dumps(result, ensure_ascii=False)}
+
         # ---- SCHEDULE (instructor slots) ----
         if resource == 'schedule':
             instructor_id = params.get('instructor_id')

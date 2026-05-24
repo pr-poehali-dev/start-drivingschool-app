@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
-import { getGroups, getApplications, updateApplicationStatus, updateDocument } from '@/lib/api';
+import { getGroups, getApplications, updateApplicationStatus, updateDocument, getUsers, createUser, updateUser, getGroupsList, type UserRecord } from '@/lib/api';
 
 const TABS = [
   { id: 'overview', label: 'Обзор', icon: 'LayoutDashboard' },
+  { id: 'users', label: 'Пользователи', icon: 'UserPlus' },
   { id: 'groups', label: 'Группы', icon: 'Users' },
   { id: 'applications', label: 'Заявки', icon: 'FileText' },
   { id: 'documents', label: 'Документы', icon: 'FolderOpen' },
@@ -34,9 +35,23 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<{ name: string } | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [groupsList, setGroupsList] = useState<{ id: number; name: string; category: string }[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // New user form
+  const emptyForm = { login: '', password: '', name: '', phone: '', email: '', account_type: 'student', group_id: '' };
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [formError, setFormError] = useState('');
+  const [formLoading, setFormLoading] = useState(false);
+
+  // Edit user
+  const [editUser, setEditUser] = useState<UserRecord | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', password: '' });
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('start_user');
@@ -45,6 +60,8 @@ export default function AdminDashboard() {
     Promise.all([
       getGroups().then(setGroups),
       getApplications().then(data => setApps(data as Application[])),
+      getUsers().then(setUsers),
+      getGroupsList().then(setGroupsList),
     ]).finally(() => setLoading(false));
   }, [navigate]);
 
@@ -64,6 +81,44 @@ export default function AdminDashboard() {
     if (selectedGroup?.id === group.id) setSelectedGroup(prev => prev ? updateGroup(prev) : null);
   };
 
+  const handleCreateUser = async () => {
+    setFormError('');
+    if (!form.login || !form.password || !form.name) {
+      setFormError('Заполните имя, логин и пароль');
+      return;
+    }
+    setFormLoading(true);
+    try {
+      const res = await createUser({
+        ...form,
+        group_id: form.group_id ? Number(form.group_id) : null,
+      });
+      if ('error' in res) { setFormError(res.error); return; }
+      await getUsers().then(setUsers);
+      setForm(emptyForm);
+      setShowForm(false);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const openEdit = (u: UserRecord) => {
+    setEditUser(u);
+    setEditForm({ name: u.name, phone: u.phone, email: u.email, password: '' });
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editUser) return;
+    setEditLoading(true);
+    try {
+      await updateUser({ id: editUser.id, ...editForm });
+      await getUsers().then(setUsers);
+      setEditUser(null);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   if (!user) return null;
 
   const allStudents = groups.flatMap(g => g.students);
@@ -78,6 +133,185 @@ export default function AdminDashboard() {
     );
 
     switch (tab) {
+      case 'users':
+        return (
+          <div className="space-y-5 max-w-4xl">
+            {/* Кнопка добавить */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">{users.length} пользователей в системе</p>
+              <button
+                onClick={() => { setShowForm(true); setFormError(''); }}
+                className="flex items-center gap-2 bg-burgundy text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-burgundy-light transition-all"
+              >
+                <Icon name="UserPlus" size={15} />
+                Добавить пользователя
+              </button>
+            </div>
+
+            {/* Форма создания */}
+            {showForm && (
+              <div className="bg-white rounded-2xl border-2 border-burgundy/20 p-6">
+                <h3 className="font-montserrat font-semibold text-gray-900 mb-4">Новый пользователь</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Полное имя *</label>
+                    <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Иван Иванов" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30 focus:border-burgundy" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Тип аккаунта</label>
+                    <select value={form.account_type} onChange={e => setForm(f => ({ ...f, account_type: e.target.value }))}
+                      className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-burgundy/30">
+                      <option value="student">Ученик</option>
+                      <option value="instructor">Инструктор</option>
+                      <option value="admin">Администратор</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Логин *</label>
+                    <input value={form.login} onChange={e => setForm(f => ({ ...f, login: e.target.value }))}
+                      placeholder="ivanov" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30 focus:border-burgundy" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Пароль *</label>
+                    <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                      placeholder="Минимум 4 символа" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30 focus:border-burgundy" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Телефон</label>
+                    <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                      placeholder="+7-900-000-00-00" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Email</label>
+                    <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="ivan@mail.ru" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                  </div>
+                  {form.account_type === 'student' && (
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-gray-500 block mb-1">Группа</label>
+                      <select value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-burgundy/30">
+                        <option value="">— Без группы —</option>
+                        {groupsList.map(g => <option key={g.id} value={g.id}>{g.name} (кат. {g.category})</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+                {formError && (
+                  <div className="mt-3 flex items-center gap-2 text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">
+                    <Icon name="AlertCircle" size={14} />
+                    {formError}
+                  </div>
+                )}
+                <div className="flex gap-3 mt-5">
+                  <button onClick={handleCreateUser} disabled={formLoading}
+                    className="flex items-center gap-2 bg-burgundy text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-burgundy-light transition-all disabled:opacity-60">
+                    {formLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
+                    Создать
+                  </button>
+                  <button onClick={() => { setShowForm(false); setForm(emptyForm); setFormError(''); }}
+                    className="text-sm text-gray-500 px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all">
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Список пользователей */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-50 bg-gray-50">
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Имя</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Логин</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Тип</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Телефон</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Группа</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-400 uppercase">Добавлен</th>
+                    <th className="px-5 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {users.map(u => {
+                    const typeLabel: Record<string, { label: string; cls: string }> = {
+                      student:    { label: 'Ученик',         cls: 'bg-blue-100 text-blue-700' },
+                      instructor: { label: 'Инструктор',     cls: 'bg-green-100 text-green-700' },
+                      admin:      { label: 'Администратор',  cls: 'bg-purple-100 text-purple-700' },
+                    };
+                    const badge = typeLabel[u.account_type] ?? { label: u.account_type, cls: 'bg-gray-100 text-gray-600' };
+                    return (
+                      <tr key={u.id} className="hover:bg-gray-50/50">
+                        <td className="px-5 py-3 font-medium text-gray-900">{u.name}</td>
+                        <td className="px-5 py-3 font-mono text-xs text-gray-500">{u.login}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500">{u.phone || '—'}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{u.group_name || '—'}</td>
+                        <td className="px-5 py-3 text-gray-400 text-xs">{u.created_at}</td>
+                        <td className="px-5 py-3">
+                          <button onClick={() => openEdit(u)}
+                            className="text-xs text-gray-400 hover:text-burgundy transition-colors flex items-center gap-1">
+                            <Icon name="Pencil" size={13} />
+                            Изменить
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Модалка редактирования */}
+            {editUser && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 w-full max-w-md shadow-2xl">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-montserrat font-semibold text-gray-900">Редактировать: {editUser.name}</h3>
+                    <button onClick={() => setEditUser(null)} className="text-gray-400 hover:text-gray-700">
+                      <Icon name="X" size={18} />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Полное имя</label>
+                      <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Телефон</label>
+                      <input value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Email</label>
+                      <input value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                        className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Новый пароль <span className="text-gray-400">(оставьте пустым, если не менять)</span></label>
+                      <input type="password" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                        placeholder="Новый пароль" className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-burgundy/30" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-5">
+                    <button onClick={handleUpdateUser} disabled={editLoading}
+                      className="flex items-center gap-2 bg-burgundy text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-burgundy-light transition-all disabled:opacity-60">
+                      {editLoading ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
+                      Сохранить
+                    </button>
+                    <button onClick={() => setEditUser(null)} className="text-sm text-gray-500 px-5 py-2.5 rounded-xl hover:bg-gray-100 transition-all">
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
       case 'overview':
         return (
           <div className="space-y-6">
