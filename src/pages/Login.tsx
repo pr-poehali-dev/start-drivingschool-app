@@ -1,28 +1,28 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
-
-const DEMO_USERS = [
-  { login: 'student', pass: '123', role: 'student', name: 'Иван Петров' },
-  { login: 'instructor', pass: '123', role: 'instructor', name: 'Александр Петров' },
-  { login: 'admin', pass: '123', role: 'admin', name: 'Администратор' },
-];
+import { login as apiLogin } from '@/lib/api';
 
 export default function Login() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ login: '', pass: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = DEMO_USERS.find(u => u.login === form.login && u.pass === form.pass);
-    if (user) {
+    setLoading(true);
+    setError('');
+    try {
+      const user = await apiLogin(form.login, form.pass);
       localStorage.setItem('start_user', JSON.stringify(user));
       if (user.role === 'student') navigate('/student');
-      if (user.role === 'instructor') navigate('/instructor');
-      if (user.role === 'admin') navigate('/admin');
-    } else {
+      else if (user.role === 'instructor') navigate('/instructor');
+      else if (user.role === 'admin') navigate('/admin');
+    } catch {
       setError('Неверный логин или пароль');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,9 +69,10 @@ export default function Login() {
             )}
             <button
               type="submit"
-              className="w-full bg-burgundy hover:bg-burgundy-light text-white font-semibold py-3 rounded-xl transition-all"
+              disabled={loading}
+              className="w-full bg-burgundy hover:bg-burgundy-light text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              Войти
+              {loading ? <><Icon name="Loader2" size={16} className="animate-spin" />Входим...</> : 'Войти'}
             </button>
           </form>
 

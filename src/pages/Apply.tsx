@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
+import { postApplication } from '@/lib/api';
 
 export default function Apply() {
   const [form, setForm] = useState({
@@ -15,9 +16,12 @@ export default function Apply() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    setSent(true);
+    try {
+      await postApplication({ name: form.name, phone: form.phone, email: form.email, category: form.category, comment: form.comment });
+      setSent(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) {

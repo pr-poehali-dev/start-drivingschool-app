@@ -1,89 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
+import { getInstructorStudents, postJournalEntry, getInstructorSchedule } from '@/lib/api';
 
 const TABS = [
   { id: 'schedule', label: 'Расписание', icon: 'Calendar' },
   { id: 'journal', label: 'Журнал', icon: 'ClipboardList' },
 ];
 
-type JournalEntry = {
-  date: string;
-  hours: number;
-  grade: number;
-  comment: string;
-};
-
-type Student = {
-  id: number;
-  name: string;
-  category: string;
-  totalHours: number;
-  requiredHours: number;
-  journal: JournalEntry[];
-};
-
-const INITIAL_STUDENTS: Student[] = [
-  {
-    id: 1, name: 'Иван Петров', category: 'B', totalHours: 12, requiredHours: 54,
-    journal: [
-      { date: '15.05', hours: 2, grade: 5, comment: 'Уверенное вождение на площадке' },
-      { date: '18.05', hours: 2, grade: 4, comment: 'Трудности с параллельной парковкой' },
-      { date: '22.05', hours: 2, grade: 5, comment: 'Хорошо проехал по городу' },
-    ],
-  },
-  {
-    id: 2, name: 'Мария Сидорова', category: 'B', totalHours: 8, requiredHours: 54,
-    journal: [
-      { date: '16.05', hours: 2, grade: 3, comment: 'Первый выезд — волнение' },
-      { date: '20.05', hours: 2, grade: 4, comment: 'Лучше держит дистанцию' },
-      { date: '23.05', hours: 2, grade: 4, comment: 'Прогресс очевиден' },
-    ],
-  },
-  {
-    id: 3, name: 'Дмитрий Козлов', category: 'B', totalHours: 22, requiredHours: 54,
-    journal: [
-      { date: '14.05', hours: 2, grade: 5, comment: 'Отличный темп' },
-      { date: '17.05', hours: 2, grade: 5, comment: 'Самостоятельное принятие решений' },
-    ],
-  },
-];
-
-const SCHEDULE_WEEK = [
-  { day: 'Пн', date: '26 мая', slots: [
-    { time: '09:00', student: 'Иван Петров', type: 'Город', filled: true },
-    { time: '11:00', student: null, type: null, filled: false },
-    { time: '14:00', student: 'Мария Сидорова', type: 'Площадка', filled: true },
-  ]},
-  { day: 'Вт', date: '27 мая', slots: [
-    { time: '10:00', student: 'Дмитрий Козлов', type: 'Город', filled: true },
-    { time: '13:00', student: null, type: null, filled: false },
-    { time: '16:00', student: null, type: null, filled: false },
-  ]},
-  { day: 'Ср', date: '28 мая', slots: [
-    { time: '09:00', student: null, type: null, filled: false },
-    { time: '11:00', student: 'Иван Петров', type: 'Экзамен', filled: true },
-    { time: '15:00', student: 'Мария Сидорова', type: 'Город', filled: true },
-  ]},
-  { day: 'Чт', date: '29 мая', slots: [
-    { time: '09:00', student: 'Дмитрий Козлов', type: 'Площадка', filled: true },
-    { time: '11:00', student: null, type: null, filled: false },
-    { time: '14:00', student: null, type: null, filled: false },
-  ]},
-  { day: 'Пт', date: '30 мая', slots: [
-    { time: '10:00', student: 'Иван Петров', type: 'Город', filled: true },
-    { time: '12:00', student: null, type: null, filled: false },
-    { time: '15:00', student: 'Дмитрий Козлов', type: 'Город', filled: true },
-  ]},
-];
+type JournalEntry = { id: number; date: string; hours: number; grade: number; comment: string };
+type Student = { id: number; name: string; totalHours: number; requiredHours: number; journal: JournalEntry[] };
+type ScheduleSlot = { id: number; date: string; time: string; status: string; student: string | null };
 
 export default function InstructorDashboard() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('schedule');
-  const [user, setUser] = useState<{ name: string } | null>(null);
-  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [user, setUser] = useState<{ id: number; name: string } | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleSlot[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [newEntry, setNewEntry] = useState({ date: '', hours: 2, grade: 5, comment: '' });
   const [addingEntry, setAddingEntry] = useState(false);
@@ -91,7 +28,12 @@ export default function InstructorDashboard() {
   useEffect(() => {
     const stored = localStorage.getItem('start_user');
     if (!stored) { navigate('/login'); return; }
-    setUser(JSON.parse(stored));
+    const u = JSON.parse(stored);
+    setUser(u);
+    Promise.all([
+      getInstructorStudents(u.id).then(setStudents),
+      getInstructorSchedule(u.id).then(setSchedule),
+    ]).finally(() => setLoading(false));
   }, [navigate]);
 
   const logout = () => {
@@ -99,56 +41,78 @@ export default function InstructorDashboard() {
     navigate('/');
   };
 
-  const saveEntry = () => {
-    if (!selectedStudent || !newEntry.date) return;
-    const entry: JournalEntry = { ...newEntry };
-    setStudents(prev => prev.map(s =>
-      s.id === selectedStudent.id
-        ? { ...s, totalHours: s.totalHours + newEntry.hours, journal: [...s.journal, entry] }
-        : s
-    ));
-    setSelectedStudent(prev => prev ? {
-      ...prev,
-      totalHours: prev.totalHours + newEntry.hours,
-      journal: [...prev.journal, entry],
-    } : null);
+  const saveEntry = async () => {
+    if (!selectedStudent || !newEntry.date || !user) return;
+    const res = await postJournalEntry({
+      student_id: selectedStudent.id,
+      instructor_id: user.id,
+      lesson_date: newEntry.date,
+      hours: newEntry.hours,
+      grade: newEntry.grade,
+      comment: newEntry.comment,
+    });
+    const entry: JournalEntry = { id: res.id, date: newEntry.date, hours: newEntry.hours, grade: newEntry.grade, comment: newEntry.comment };
+    const updater = (s: Student) => s.id === selectedStudent.id
+      ? { ...s, totalHours: s.totalHours + newEntry.hours, journal: [entry, ...s.journal] }
+      : s;
+    setStudents(prev => prev.map(updater));
+    setSelectedStudent(prev => prev ? updater(prev) : null);
     setNewEntry({ date: '', hours: 2, grade: 5, comment: '' });
     setAddingEntry(false);
   };
 
   if (!user) return null;
 
+  // Group schedule by day
+  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  const scheduleByDay: Record<string, ScheduleSlot[]> = {};
+  schedule.forEach(s => {
+    const key = s.date;
+    if (!scheduleByDay[key]) scheduleByDay[key] = [];
+    scheduleByDay[key].push(s);
+  });
+  const scheduleDays = Object.entries(scheduleByDay).slice(0, 5);
+
   const renderTab = () => {
+    if (loading) return (
+      <div className="flex items-center justify-center h-32 text-gray-400">
+        <Icon name="Loader2" size={24} className="animate-spin mr-2" />Загрузка...
+      </div>
+    );
+
     switch (tab) {
       case 'schedule':
         return (
           <div>
             <div className="overflow-x-auto">
-              <div className="grid grid-cols-5 gap-3 min-w-[700px]">
-                {SCHEDULE_WEEK.map((day, di) => (
-                  <div key={di} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 text-center">
-                      <div className="font-montserrat font-bold text-sm text-gray-900">{day.day}</div>
-                      <div className="text-xs text-gray-400">{day.date}</div>
-                    </div>
-                    <div className="p-2 space-y-2">
-                      {day.slots.map((slot, si) => (
-                        <div key={si} className={`rounded-lg p-2 text-xs ${slot.filled ? 'bg-burgundy/10 border border-burgundy/20' : 'bg-gray-50 border border-dashed border-gray-200'}`}>
-                          <div className={`font-semibold ${slot.filled ? 'text-burgundy' : 'text-gray-300'}`}>{slot.time}</div>
-                          {slot.filled ? (
-                            <>
-                              <div className="text-gray-700 font-medium mt-0.5 leading-tight">{slot.student}</div>
-                              <div className="text-gray-400 mt-0.5">{slot.type}</div>
-                            </>
-                          ) : (
-                            <div className="text-gray-300 mt-0.5">Свободно</div>
-                          )}
+              {scheduleDays.length === 0 ? (
+                <div className="text-center text-gray-400 py-12 text-sm">Слотов нет</div>
+              ) : (
+                <div className="grid gap-3 min-w-[600px]" style={{ gridTemplateColumns: `repeat(${scheduleDays.length}, 1fr)` }}>
+                  {scheduleDays.map(([date, slots]) => {
+                    const d = new Date(date);
+                    return (
+                      <div key={date} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                        <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 text-center">
+                          <div className="font-montserrat font-bold text-sm text-gray-900">{dayNames[d.getDay()]}</div>
+                          <div className="text-xs text-gray-400">{d.getDate()} {d.toLocaleDateString('ru-RU', { month: 'short' })}</div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+                        <div className="p-2 space-y-2">
+                          {slots.map(slot => (
+                            <div key={slot.id} className={`rounded-lg p-2 text-xs ${slot.student ? 'bg-burgundy/10 border border-burgundy/20' : 'bg-gray-50 border border-dashed border-gray-200'}`}>
+                              <div className={`font-semibold ${slot.student ? 'text-burgundy' : 'text-gray-300'}`}>{slot.time}</div>
+                              {slot.student
+                                ? <div className="text-gray-700 font-medium mt-0.5 leading-tight">{slot.student}</div>
+                                : <div className="text-gray-300 mt-0.5">Свободно</div>
+                              }
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -158,6 +122,7 @@ export default function InstructorDashboard() {
           <div className="flex gap-6">
             <div className="w-56 shrink-0 space-y-2">
               <div className="text-xs text-gray-400 uppercase tracking-wider px-1 mb-3">Мои ученики</div>
+              {students.length === 0 && <p className="text-sm text-gray-400 px-1">Нет учеников</p>}
               {students.map(s => (
                 <button
                   key={s.id}
@@ -167,7 +132,7 @@ export default function InstructorDashboard() {
                   }`}
                 >
                   <div className="font-medium text-sm text-gray-900">{s.name}</div>
-                  <div className="text-xs text-gray-400 mt-0.5">Кат. {s.category} · {s.totalHours}/{s.requiredHours} ч</div>
+                  <div className="text-xs text-gray-400 mt-0.5">{s.totalHours}/{s.requiredHours} ч</div>
                   <div className="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
                     <div className="h-full bg-burgundy rounded-full" style={{ width: `${(s.totalHours / s.requiredHours) * 100}%` }} />
                   </div>
@@ -188,9 +153,7 @@ export default function InstructorDashboard() {
                   <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                     <div>
                       <h3 className="font-montserrat font-semibold text-gray-900">{selectedStudent.name}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {selectedStudent.totalHours} из {selectedStudent.requiredHours} часов
-                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{selectedStudent.totalHours} из {selectedStudent.requiredHours} часов</p>
                     </div>
                     <button
                       onClick={() => setAddingEntry(true)}
@@ -206,43 +169,29 @@ export default function InstructorDashboard() {
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Дата</label>
-                          <input
-                            type="text"
-                            placeholder="напр. 26.05"
-                            value={newEntry.date}
+                          <input type="text" placeholder="напр. 26 мая" value={newEntry.date}
                             onChange={e => setNewEntry(n => ({ ...n, date: e.target.value }))}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-burgundy/30"
-                          />
+                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-burgundy/30" />
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Часов</label>
-                          <select
-                            value={newEntry.hours}
-                            onChange={e => setNewEntry(n => ({ ...n, hours: +e.target.value }))}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-burgundy/30"
-                          >
+                          <select value={newEntry.hours} onChange={e => setNewEntry(n => ({ ...n, hours: +e.target.value }))}
+                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-burgundy/30">
                             {[1,2,3,4].map(h => <option key={h} value={h}>{h} ч</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Оценка</label>
-                          <select
-                            value={newEntry.grade}
-                            onChange={e => setNewEntry(n => ({ ...n, grade: +e.target.value }))}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-burgundy/30"
-                          >
+                          <select value={newEntry.grade} onChange={e => setNewEntry(n => ({ ...n, grade: +e.target.value }))}
+                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-burgundy/30">
                             {[3,4,5].map(g => <option key={g} value={g}>{g}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="text-xs text-gray-500 block mb-1">Комментарий</label>
-                          <input
-                            type="text"
-                            placeholder="Краткая заметка"
-                            value={newEntry.comment}
+                          <input type="text" placeholder="Краткая заметка" value={newEntry.comment}
                             onChange={e => setNewEntry(n => ({ ...n, comment: e.target.value }))}
-                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-burgundy/30"
-                          />
+                            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-burgundy/30" />
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -262,8 +211,11 @@ export default function InstructorDashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {selectedStudent.journal.map((entry, i) => (
-                        <tr key={i} className="hover:bg-gray-50/50">
+                      {selectedStudent.journal.length === 0 && (
+                        <tr><td colSpan={4} className="px-6 py-6 text-center text-gray-400 text-xs">Записей нет</td></tr>
+                      )}
+                      {selectedStudent.journal.map((entry) => (
+                        <tr key={entry.id} className="hover:bg-gray-50/50">
                           <td className="px-6 py-3 text-gray-600">{entry.date}</td>
                           <td className="px-6 py-3 text-gray-600">{entry.hours} ч</td>
                           <td className="px-6 py-3">
@@ -306,23 +258,15 @@ export default function InstructorDashboard() {
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                tab === t.id ? 'bg-burgundy/10 text-burgundy font-medium' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${tab === t.id ? 'bg-burgundy/10 text-burgundy font-medium' : 'text-gray-600 hover:bg-gray-50'}`}>
               <Icon name={t.icon} size={16} />
               {t.label}
             </button>
           ))}
         </nav>
         <div className="p-3 border-t border-gray-100">
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-all"
-          >
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-50 transition-all">
             <Icon name="LogOut" size={15} />
             Выйти
           </button>
@@ -339,11 +283,8 @@ export default function InstructorDashboard() {
         <div className="md:hidden fixed inset-0 z-40 bg-white pt-14 p-4">
           <nav className="space-y-1">
             {TABS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg text-sm ${tab === t.id ? 'bg-burgundy/10 text-burgundy font-medium' : 'text-gray-600'}`}
-              >
+              <button key={t.id} onClick={() => { setTab(t.id); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-3 rounded-lg text-sm ${tab === t.id ? 'bg-burgundy/10 text-burgundy font-medium' : 'text-gray-600'}`}>
                 <Icon name={t.icon} size={16} />
                 {t.label}
               </button>
@@ -358,9 +299,7 @@ export default function InstructorDashboard() {
 
       <main className="flex-1 p-6 md:p-8 mt-14 md:mt-0 overflow-auto">
         <div className="mb-6">
-          <h1 className="font-montserrat font-bold text-xl text-gray-900">
-            {TABS.find(t => t.id === tab)?.label}
-          </h1>
+          <h1 className="font-montserrat font-bold text-xl text-gray-900">{TABS.find(t => t.id === tab)?.label}</h1>
           <p className="text-sm text-gray-400 mt-0.5">Добро пожаловать, {user.name}</p>
         </div>
         {renderTab()}

@@ -1,9 +1,22 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
+import { postReview } from '@/lib/api';
 
-export default function StudentReview() {
+export default function StudentReview({ userId }: { userId: number }) {
   const [reviewForm, setReviewForm] = useState({ rating: 5, text: '' });
   const [reviewSent, setReviewSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!reviewForm.text) return;
+    setLoading(true);
+    try {
+      await postReview(userId, reviewForm.rating, reviewForm.text);
+      setReviewSent(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (reviewSent) {
     return (
@@ -46,11 +59,11 @@ export default function StudentReview() {
           />
         </div>
         <button
-          onClick={() => setReviewSent(true)}
-          disabled={!reviewForm.text}
-          className="w-full bg-burgundy text-white font-semibold py-3 rounded-xl hover:bg-burgundy-light transition-all disabled:opacity-50"
+          onClick={handleSend}
+          disabled={!reviewForm.text || loading}
+          className="w-full bg-burgundy text-white font-semibold py-3 rounded-xl hover:bg-burgundy-light transition-all disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          Отправить отзыв
+          {loading ? <><Icon name="Loader2" size={16} className="animate-spin" />Отправляем...</> : 'Отправить отзыв'}
         </button>
       </div>
     </div>

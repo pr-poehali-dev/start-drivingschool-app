@@ -1,16 +1,31 @@
+import { useEffect, useState } from 'react';
 import Icon from '@/components/ui/icon';
+import { getStudentJournal, getSlots } from '@/lib/api';
 
-const hoursTotal = 12;
 const hoursRequired = 54;
 
-export default function StudentOverview({ userName }: { userName: string }) {
+export default function StudentOverview({ userName, userId }: { userName: string; userId: number }) {
+  const [totalHours, setTotalHours] = useState(0);
+  const [nextSlot, setNextSlot] = useState<string | null>(null);
+
+  useEffect(() => {
+    getStudentJournal(userId).then(d => setTotalHours(d.totalHours));
+    getSlots(userId).then(slots => {
+      const booked = slots.find(s => s.status === 'booked');
+      if (booked) {
+        const d = new Date(booked.date);
+        setNextSlot(`${d.getDate()} ${d.toLocaleDateString('ru-RU', { month: 'long' })} ${booked.time}`);
+      }
+    });
+  }, [userId]);
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { icon: 'Clock', label: 'Часов вождения', val: `${hoursTotal} / ${hoursRequired}`, color: 'text-burgundy' },
+          { icon: 'Clock', label: 'Часов вождения', val: `${totalHours} / ${hoursRequired}`, color: 'text-burgundy' },
           { icon: 'BookOpen', label: 'Тесты ПДД', val: 'Демо-база', color: 'text-blue-600' },
-          { icon: 'Calendar', label: 'Ближайшее занятие', val: '27 мая 09:00', color: 'text-green-600' },
+          { icon: 'Calendar', label: 'Ближайшее занятие', val: nextSlot || 'Не записан', color: 'text-green-600' },
         ].map((s, i) => (
           <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
@@ -29,12 +44,12 @@ export default function StudentOverview({ userName }: { userName: string }) {
         <div className="mb-4">
           <div className="flex justify-between text-sm text-gray-500 mb-1">
             <span>Часы вождения</span>
-            <span>{hoursTotal} из {hoursRequired}</span>
+            <span>{totalHours} из {hoursRequired}</span>
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-burgundy rounded-full transition-all"
-              style={{ width: `${(hoursTotal / hoursRequired) * 100}%` }}
+              style={{ width: `${Math.min((totalHours / hoursRequired) * 100, 100)}%` }}
             />
           </div>
         </div>

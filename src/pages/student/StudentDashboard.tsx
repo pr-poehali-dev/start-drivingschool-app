@@ -18,7 +18,7 @@ const TABS = [
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [tab, setTab] = useState('overview');
-  const [user, setUser] = useState<{ name: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; name: string; role: string } | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -36,11 +36,11 @@ export default function StudentDashboard() {
 
   const renderTab = () => {
     switch (tab) {
-      case 'overview':  return <StudentOverview userName={user.name} />;
+      case 'overview':  return <StudentOverview userName={user.name} userId={user.id} />;
       case 'pdd':       return <StudentPDD />;
-      case 'calendar':  return <StudentCalendar />;
-      case 'progress':  return <StudentProgress />;
-      case 'review':    return <StudentReview />;
+      case 'calendar':  return <StudentCalendar userId={user.id} />;
+      case 'progress':  return <StudentProgress userId={user.id} />;
+      case 'review':    return <StudentReview userId={user.id} />;
       default:          return null;
     }
   };

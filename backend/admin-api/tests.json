@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Get groups",
+      "method": "GET",
+      "path": "/?resource=groups",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get applications",
+      "method": "GET",
+      "path": "/?resource=applications",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Get slots",
+      "method": "GET",
+      "path": "/?resource=slots",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Get journal",
+      "method": "GET",
+      "path": "/?resource=journal&student_id=1",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "student-api": "https://functions.poehali.dev/d4610485-716c-44b5-8d9d-051489892951",
+  "auth": "https://functions.poehali.dev/99d6970b-09cc-410b-aed6-d4f7611be6c0",
+  "reviews": "https://functions.poehali.dev/912d3dfb-2d6d-46d6-b608-3aef0ee3b77b",
+  "admin-api": "https://functions.poehali.dev/cdd6d02f-2846-4dc0-a969-4a0b69940aba"
+}

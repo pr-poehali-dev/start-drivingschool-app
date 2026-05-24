@@ -1,25 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
+import { getSlots, bookSlot as apiBook, cancelSlot as apiCancel } from '@/lib/api';
 
-const INITIAL_SLOTS = [
-  { date: '2026-05-27', time: '09:00', instructor: 'Александр Петров', status: 'booked' },
-  { date: '2026-05-29', time: '14:00', instructor: 'Михаил Сидоров', status: 'available' },
-  { date: '2026-05-30', time: '10:00', instructor: 'Ольга Иванова', status: 'available' },
-  { date: '2026-06-02', time: '11:00', instructor: 'Александр Петров', status: 'available' },
-  { date: '2026-06-03', time: '16:00', instructor: 'Михаил Сидоров', status: 'available' },
-  { date: '2026-06-04', time: '09:00', instructor: 'Ольга Иванова', status: 'booked' },
-];
+type Slot = { id: number; date: string; time: string; status: string; instructor: string };
 
-export default function StudentCalendar() {
-  const [slots, setSlots] = useState(INITIAL_SLOTS);
+export default function StudentCalendar({ userId }: { userId: number }) {
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const bookSlot = (idx: number) => {
-    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, status: 'booked' } : s));
+  useEffect(() => {
+    getSlots(userId).then(setSlots).finally(() => setLoading(false));
+  }, [userId]);
+
+  const bookSlot = async (slotId: number) => {
+    await apiBook(slotId, userId);
+    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, status: 'booked' } : s));
   };
 
-  const cancelSlot = (idx: number) => {
-    setSlots(prev => prev.map((s, i) => i === idx ? { ...s, status: 'available' } : s));
+  const cancelSlot = async (slotId: number) => {
+    await apiCancel(slotId);
+    setSlots(prev => prev.map(s => s.id === slotId ? { ...s, status: 'available' } : s));
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-32 text-gray-400">
+      <Icon name="Loader2" size={24} className="animate-spin mr-2" />Загрузка...
+    </div>
+  );
 
   return (
     <div className="max-w-2xl">
@@ -29,11 +36,14 @@ export default function StudentCalendar() {
           <p className="text-xs text-gray-400 mt-0.5">Запись подтверждается автоматически</p>
         </div>
         <div className="divide-y divide-gray-50">
-          {slots.map((slot, i) => {
+          {slots.length === 0 && (
+            <div className="px-6 py-8 text-center text-gray-400 text-sm">Нет доступных слотов</div>
+          )}
+          {slots.map((slot) => {
             const d = new Date(slot.date);
             const dayLabel = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
             return (
-              <div key={i} className="px-6 py-4 flex items-center justify-between gap-4">
+              <div key={slot.id} className="px-6 py-4 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="text-center w-12">
                     <div className="text-lg font-montserrat font-bold text-gray-900">{d.getDate()}</div>
@@ -50,16 +60,13 @@ export default function StudentCalendar() {
                       <Icon name="CheckCircle" size={11} />
                       Записан
                     </span>
-                    <button
-                      onClick={() => cancelSlot(i)}
-                      className="text-xs text-red-500 hover:underline"
-                    >
+                    <button onClick={() => cancelSlot(slot.id)} className="text-xs text-red-500 hover:underline">
                       Отменить
                     </button>
                   </div>
                 ) : (
                   <button
-                    onClick={() => bookSlot(i)}
+                    onClick={() => bookSlot(slot.id)}
                     className="text-xs bg-burgundy text-white px-4 py-1.5 rounded-lg hover:bg-burgundy-light transition-all"
                   >
                     Записаться
