@@ -68,20 +68,20 @@ export default function Home() {
     <div className="min-h-screen">
       {/* HERO */}
       <section className="relative min-h-[90vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gray-950" />
-        <div className="absolute inset-0 bg-gradient-to-br from-burgundy/30 via-gray-950 to-gray-950" />
+        <div className="absolute inset-0 bg-white" />
+        <div className="absolute inset-0 bg-gradient-to-br from-burgundy/5 via-white to-gray-50" />
         <div className="relative container mx-auto px-4 py-20">
           <div className="max-w-xl animate-fade-in">
-            <div className="inline-flex items-center gap-2 bg-burgundy/20 border border-burgundy/40 text-white text-xs px-3 py-1.5 rounded-full mb-6 backdrop-blur-sm">
-              <Icon name="MapPin" size={12} className="text-red-300" />
+            <div className="inline-flex items-center gap-2 bg-burgundy/10 border border-burgundy/30 text-burgundy text-xs px-3 py-1.5 rounded-full mb-6">
+              <Icon name="MapPin" size={12} className="text-burgundy" />
               г. Владимир — официальная автошкола ГИБДД
             </div>
-            <h1 className="font-montserrat font-black text-5xl md:text-6xl text-white leading-tight mb-4">
+            <h1 className="font-montserrat font-black text-5xl md:text-6xl text-gray-900 leading-tight mb-4">
               Сдай с<br />
-              <span className="text-red-400">первого</span><br />
+              <span className="text-burgundy">первого</span><br />
               раза
             </h1>
-            <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+            <p className="text-gray-500 text-lg mb-8 leading-relaxed">
               Автошкола «Старт» — учим водить уверенно и безопасно. Категории A и B, опытные инструкторы, своя площадка.
             </p>
             <div className="flex flex-wrap gap-4">
@@ -94,7 +94,7 @@ export default function Home() {
               </Link>
               <Link
                 to="/tariffs"
-                className="inline-flex items-center gap-2 border border-white/30 text-white hover:bg-white/10 px-8 py-4 rounded-lg transition-all text-base backdrop-blur-sm"
+                className="inline-flex items-center gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-4 rounded-lg transition-all text-base"
               >
                 Тарифы
               </Link>
@@ -106,15 +106,15 @@ export default function Home() {
                 { val: '80%', label: 'сдают с 1-го раза' },
               ].map((s) => (
                 <div key={s.label}>
-                  <div className="font-montserrat font-black text-2xl text-white">{s.val}</div>
-                  <div className="text-xs text-gray-400">{s.label}</div>
+                  <div className="font-montserrat font-black text-2xl text-gray-900">{s.val}</div>
+                  <div className="text-xs text-gray-500">{s.label}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce">
-          <Icon name="ChevronDown" size={28} className="text-white/50" />
+          <Icon name="ChevronDown" size={28} className="text-gray-300" />
         </div>
       </section>
 
