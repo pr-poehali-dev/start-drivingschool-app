@@ -41,10 +41,10 @@ const stages = [
 export default function HowWeTeach() {
   return (
     <div className="min-h-screen bg-white">
-      <div className="bg-gray-900 py-16">
+      <div className="bg-gray-100 py-16 border-b border-gray-200">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="font-montserrat font-black text-4xl text-white mb-3">Как мы учим</h1>
-          <p className="text-gray-400 max-w-lg mx-auto">
+          <h1 className="font-montserrat font-black text-4xl text-gray-900 mb-3">Как мы учим</h1>
+          <p className="text-gray-500 max-w-lg mx-auto">
             Проверенная программа: от первого урока до получения прав за 3 месяца
           </p>
         </div>

@@ -52,10 +52,10 @@ const tariffs = [
 export default function Tariffs() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-burgundy py-16">
+      <div className="bg-gray-100 py-16 border-b border-gray-200">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="font-montserrat font-black text-4xl text-white mb-3">Тарифы</h1>
-          <p className="text-white/70 max-w-md mx-auto">Прозрачные цены — платите один раз, без скрытых доплат в процессе</p>
+          <h1 className="font-montserrat font-black text-4xl text-gray-900 mb-3">Тарифы</h1>
+          <p className="text-gray-500 max-w-md mx-auto">Прозрачные цены — платите один раз, без скрытых доплат в процессе</p>
         </div>
       </div>
 
