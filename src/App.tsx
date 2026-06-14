@@ -21,6 +21,7 @@ import StudentDashboard from "./pages/student/StudentDashboard";
 import InstructorDashboard from "./pages/instructor/InstructorDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import Diagram from "./pages/Diagram";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ function Layout() {
           <Route path="/student/*" element={<StudentDashboard />} />
           <Route path="/instructor/*" element={<InstructorDashboard />} />
           <Route path="/admin/*" element={<AdminDashboard />} />
+          <Route path="/diagram" element={<Diagram />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
