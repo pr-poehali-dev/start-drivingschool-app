@@ -8,6 +8,9 @@ const TABS = [
   { id: 'journal', label: 'Журнал', icon: 'ClipboardList' },
 ];
 
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+
 type JournalEntry = { id: number; date: string; hours: number; grade: number; comment: string };
 type Student = { id: number; name: string; totalHours: number; requiredHours: number; journal: JournalEntry[] };
 type ScheduleSlot = { id: number; date: string; time: string; status: string; student: string | null };
@@ -21,6 +24,11 @@ export default function InstructorDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  const today = new Date();
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(today.getFullYear());
 
   const [newEntry, setNewEntry] = useState({ date: '', hours: 2, grade: 5, comment: '' });
   const [addingEntry, setAddingEntry] = useState(false);
@@ -63,15 +71,32 @@ export default function InstructorDashboard() {
 
   if (!user) return null;
 
-  // Group schedule by day
-  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+  // Группировка слотов по дате
   const scheduleByDay: Record<string, ScheduleSlot[]> = {};
   schedule.forEach(s => {
-    const key = s.date;
-    if (!scheduleByDay[key]) scheduleByDay[key] = [];
-    scheduleByDay[key].push(s);
+    if (!scheduleByDay[s.date]) scheduleByDay[s.date] = [];
+    scheduleByDay[s.date].push(s);
   });
-  const scheduleDays = Object.entries(scheduleByDay).slice(0, 5);
+
+  // Навигация по месяцу
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+    setSelectedDate(null);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+    setSelectedDate(null);
+  };
+
+  const firstDay = new Date(viewYear, viewMonth, 1);
+  const lastDay = new Date(viewYear, viewMonth + 1, 0);
+  const startOffset = firstDay.getDay();
+  const weeks = Math.ceil((startOffset + lastDay.getDate()) / 7);
+
+  const selectedSlots = selectedDate ? (scheduleByDay[selectedDate] || []) : [];
+  const bookedCount = schedule.filter(s => s.student).length;
 
   const renderTab = () => {
     if (loading) return (
@@ -83,36 +108,120 @@ export default function InstructorDashboard() {
     switch (tab) {
       case 'schedule':
         return (
-          <div>
-            <div className="overflow-x-auto">
-              {scheduleDays.length === 0 ? (
-                <div className="text-center text-gray-400 py-12 text-sm">Слотов нет</div>
-              ) : (
-                <div className="grid gap-3 min-w-[600px]" style={{ gridTemplateColumns: `repeat(${scheduleDays.length}, 1fr)` }}>
-                  {scheduleDays.map(([date, slots]) => {
-                    const d = new Date(date);
-                    return (
-                      <div key={date} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                        <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 text-center">
-                          <div className="font-montserrat font-bold text-sm text-gray-900">{dayNames[d.getDay()]}</div>
-                          <div className="text-xs text-gray-400">{d.getDate()} {d.toLocaleDateString('ru-RU', { month: 'short' })}</div>
-                        </div>
-                        <div className="p-2 space-y-2">
-                          {slots.map(slot => (
-                            <div key={slot.id} className={`rounded-lg p-2 text-xs ${slot.student ? 'bg-burgundy/10 border border-burgundy/20' : 'bg-gray-50 border border-dashed border-gray-200'}`}>
-                              <div className={`font-semibold ${slot.student ? 'text-burgundy' : 'text-gray-300'}`}>{slot.time}</div>
-                              {slot.student
-                                ? <div className="text-gray-700 font-medium mt-0.5 leading-tight">{slot.student}</div>
-                                : <div className="text-gray-300 mt-0.5">Свободно</div>
-                              }
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+          <div className="space-y-4 max-w-3xl">
+            {/* Счётчик записей */}
+            {bookedCount > 0 && (
+              <div className="bg-burgundy/5 border border-burgundy/10 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-burgundy font-medium">
+                <Icon name="Users" size={15} />
+                Записано учеников на этот месяц: {bookedCount}
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-[auto_1fr] gap-4">
+              {/* Календарь */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                  <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                    <Icon name="ChevronLeft" size={16} className="text-gray-500" />
+                  </button>
+                  <span className="font-montserrat font-bold text-sm text-gray-900">
+                    {MONTHS_RU[viewMonth]} {viewYear}
+                  </span>
+                  <button onClick={nextMonth} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                    <Icon name="ChevronRight" size={16} className="text-gray-500" />
+                  </button>
                 </div>
-              )}
+
+                <div className="grid grid-cols-7 border-b border-gray-50">
+                  {DAY_NAMES.map(d => (
+                    <div key={d} className="text-center text-xs text-gray-400 py-2 font-medium">{d}</div>
+                  ))}
+                </div>
+
+                <div className="p-2">
+                  {Array.from({ length: weeks }).map((_, wi) => (
+                    <div key={wi} className="grid grid-cols-7">
+                      {Array.from({ length: 7 }).map((_, di) => {
+                        const cellIdx = wi * 7 + di;
+                        const dayNum = cellIdx - startOffset + 1;
+                        if (dayNum < 1 || dayNum > lastDay.getDate()) return <div key={di} className="h-10" />;
+                        const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                        const daySlots = scheduleByDay[dateStr] || [];
+                        const hasBooked = daySlots.some(s => s.student);
+                        const hasFree = daySlots.some(s => !s.student);
+                        const isToday = dateStr === today.toISOString().slice(0, 10);
+                        const isPast = new Date(dateStr) < new Date(today.toISOString().slice(0, 10));
+                        const isSelected = selectedDate === dateStr;
+
+                        return (
+                          <button
+                            key={di}
+                            onClick={() => daySlots.length > 0 ? setSelectedDate(isSelected ? null : dateStr) : undefined}
+                            disabled={daySlots.length === 0}
+                            className={`relative h-10 w-full rounded-xl text-sm font-medium transition-all
+                              ${isSelected ? 'bg-burgundy text-white' : ''}
+                              ${!isSelected && isToday ? 'ring-2 ring-burgundy/30 text-burgundy font-bold' : ''}
+                              ${!isSelected && daySlots.length > 0 ? 'hover:bg-gray-100 text-gray-900 cursor-pointer' : ''}
+                              ${!isSelected && daySlots.length === 0 ? 'text-gray-300 cursor-default' : ''}
+                              ${!isSelected && isPast && daySlots.length > 0 ? 'text-gray-400' : ''}
+                            `}
+                          >
+                            {dayNum}
+                            {daySlots.length > 0 && (
+                              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                                {hasBooked && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-burgundy'}`} />}
+                                {hasFree && <div className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white/60' : 'bg-gray-300'}`} />}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-4 py-3 border-t border-gray-50 flex gap-4 text-xs text-gray-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-burgundy inline-block" />Записан ученик</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300 inline-block" />Свободно</span>
+                </div>
+              </div>
+
+              {/* Слоты выбранного дня */}
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                {!selectedDate ? (
+                  <div className="flex flex-col items-center justify-center h-full min-h-[220px] text-gray-300 gap-2">
+                    <Icon name="CalendarDays" size={36} />
+                    <p className="text-sm">Выберите день на календаре</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-gray-50 px-5 py-4 border-b border-gray-100">
+                      <p className="font-montserrat font-semibold text-gray-900 text-sm">
+                        {new Date(selectedDate).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {selectedSlots.filter(s => s.student).length} записано · {selectedSlots.filter(s => !s.student).length} свободно
+                      </p>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {selectedSlots.map(slot => (
+                        <div key={slot.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
+                          <div>
+                            <div className="font-semibold text-sm text-gray-900">{slot.time}</div>
+                            {slot.student
+                              ? <div className="text-xs text-burgundy font-medium mt-0.5">{slot.student}</div>
+                              : <div className="text-xs text-gray-400 mt-0.5">Свободно</div>
+                            }
+                          </div>
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${slot.student ? 'bg-burgundy/10 text-burgundy' : 'bg-gray-100 text-gray-400'}`}>
+                            {slot.student ? 'Занято' : 'Свободно'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         );
